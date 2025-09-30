@@ -29,63 +29,63 @@ const Onboarding = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setAudioStream(stream);
       setHasMicPermission(true);
-      toast.success("Microphone access granted");
-      
-      // Try to auto-start recording, but don't block the UI if it fails
-      setTimeout(async () => {
-        try {
-          await startRecordingWithStream(stream);
-        } catch (error) {
-          console.log("Auto-start failed, user will need to click record button:", error);
-          // Silently fail - user can click the record button manually
-        }
-      }, 100);
+      toast.success("Microphone access granted - tap the button to start recording");
     } catch (error) {
       toast.error("Could not access microphone");
       console.error("Error accessing microphone:", error);
     }
   };
 
-  const startRecordingWithStream = async (stream: MediaStream) => {
-    audioChunksRef.current = [];
-    
-    // Find a supported MIME type
-    const mimeTypes = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
-      'audio/mp4',
-      ''  // Empty string as fallback to let browser choose
-    ];
-    
-    let selectedMimeType = '';
-    for (const mimeType of mimeTypes) {
-      if (mimeType === '' || MediaRecorder.isTypeSupported(mimeType)) {
-        selectedMimeType = mimeType;
-        break;
-      }
-    }
-    
-    const options = selectedMimeType ? { mimeType: selectedMimeType } : undefined;
-    const mediaRecorder = new MediaRecorder(stream, options);
-    mediaRecorderRef.current = mediaRecorder;
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
-      }
-    };
-
-    mediaRecorder.start();
-    setIsRecording(true);
-    toast.success("Recording started");
-  };
-
   const startRecording = async () => {
     if (!audioStream) return;
     
     try {
-      await startRecordingWithStream(audioStream);
+      audioChunksRef.current = [];
+      
+      // Try different MIME types
+      let mediaRecorder: MediaRecorder;
+      
+      try {
+        // Try with no options first (let browser decide)
+        mediaRecorder = new MediaRecorder(audioStream);
+      } catch (e) {
+        // If that fails, try specific codecs
+        const mimeTypes = [
+          'audio/webm',
+          'audio/mp4',
+          'audio/ogg',
+          'audio/wav'
+        ];
+        
+        let success = false;
+        for (const mimeType of mimeTypes) {
+          try {
+            if (MediaRecorder.isTypeSupported(mimeType)) {
+              mediaRecorder = new MediaRecorder(audioStream, { mimeType });
+              success = true;
+              break;
+            }
+          } catch (err) {
+            continue;
+          }
+        }
+        
+        if (!success) {
+          throw new Error('No supported audio format found');
+        }
+      }
+      
+      mediaRecorderRef.current = mediaRecorder!;
+
+      mediaRecorder!.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder!.start();
+      setIsRecording(true);
+      toast.success("Recording started");
     } catch (error) {
       toast.error("Could not start recording");
       console.error("Error starting recording:", error);
