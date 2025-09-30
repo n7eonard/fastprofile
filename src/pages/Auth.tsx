@@ -14,10 +14,19 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const authenticated = sessionStorage.getItem('recordings_authenticated');
-    if (authenticated === 'true') {
-      navigate("/recordings");
+    // Check if user already has a valid session
+    const token = sessionStorage.getItem('admin_session_token');
+    const expiresAt = sessionStorage.getItem('admin_session_expires');
+    
+    if (token && expiresAt) {
+      const expiryDate = new Date(expiresAt);
+      if (expiryDate > new Date()) {
+        navigate("/recordings");
+      } else {
+        // Clear expired session
+        sessionStorage.removeItem('admin_session_token');
+        sessionStorage.removeItem('admin_session_expires');
+      }
     }
   }, [navigate]);
 
@@ -38,9 +47,10 @@ const Auth = () => {
 
       if (error) throw error;
 
-      if (data.valid) {
-        // Store authentication in session storage
-        sessionStorage.setItem('recordings_authenticated', 'true');
+      if (data.valid && data.sessionToken) {
+        // Store secure session token
+        sessionStorage.setItem('admin_session_token', data.sessionToken);
+        sessionStorage.setItem('admin_session_expires', data.expiresAt);
         toast.success("Access granted");
         navigate("/recordings");
       } else {

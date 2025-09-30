@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
+import { getSessionToken } from "@/lib/sessionUtils";
 
 type Recording = {
   id: string;
@@ -34,13 +35,29 @@ const Recordings = () => {
 
   const fetchRecordings = async () => {
     try {
-      const { data, error } = await supabase
-        .from("recordings")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const sessionToken = getSessionToken();
+      
+      if (!sessionToken) {
+        toast.error("Session expired. Please login again.");
+        navigate("/auth");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('get-recordings', {
+        headers: {
+          'x-session-token': sessionToken,
+        },
+      });
 
       if (error) throw error;
-      setRecordings(data || []);
+      
+      if (data.error) {
+        toast.error(data.error);
+        navigate("/auth");
+        return;
+      }
+
+      setRecordings(data.recordings || []);
     } catch (error) {
       console.error("Error fetching recordings:", error);
       toast.error("Failed to load recordings");
@@ -50,7 +67,8 @@ const Recordings = () => {
   };
 
   const handleSignOut = () => {
-    sessionStorage.removeItem('recordings_authenticated');
+    sessionStorage.removeItem('admin_session_token');
+    sessionStorage.removeItem('admin_session_expires');
     navigate("/auth");
   };
 

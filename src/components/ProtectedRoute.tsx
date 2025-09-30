@@ -14,10 +14,29 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated via session storage
+    // Check if user has valid session token
     const checkAuth = () => {
-      const authenticated = sessionStorage.getItem('recordings_authenticated');
-      setIsAuthenticated(authenticated === 'true');
+      const token = sessionStorage.getItem('admin_session_token');
+      const expiresAt = sessionStorage.getItem('admin_session_expires');
+      
+      if (!token || !expiresAt) {
+        setIsAuthenticated(false);
+        setLoading(false);
+        return;
+      }
+
+      // Check if token has expired
+      const expiryDate = new Date(expiresAt);
+      if (expiryDate <= new Date()) {
+        // Token expired, clear it
+        sessionStorage.removeItem('admin_session_token');
+        sessionStorage.removeItem('admin_session_expires');
+        setIsAuthenticated(false);
+        setLoading(false);
+        return;
+      }
+
+      setIsAuthenticated(true);
       setLoading(false);
     };
 
@@ -25,7 +44,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }, []);
 
   const handleSignOut = () => {
-    sessionStorage.removeItem('recordings_authenticated');
+    sessionStorage.removeItem('admin_session_token');
+    sessionStorage.removeItem('admin_session_expires');
     navigate("/auth");
   };
 

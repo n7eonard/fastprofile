@@ -2,3 +2,6 @@ project_id = "mzqoneroabpdfeucyera"
 
 [functions.verify-password]
 verify_jwt = false
+
+[functions.get-recordings]
+verify_jwt = false
