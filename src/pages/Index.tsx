@@ -14,7 +14,7 @@ const Index = () => {
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight animate-scale-in">
             Create Your Voice
             <br />
-            <span className="gradient-primary bg-clip-text text-transparent">
+            <span className="inline-block gradient-primary bg-clip-text text-transparent">
               Profile
             </span>
           </h1>
