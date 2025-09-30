@@ -30,6 +30,11 @@ const Onboarding = () => {
       setAudioStream(stream);
       setHasMicPermission(true);
       toast.success("Microphone access granted");
+      
+      // Start recording immediately
+      setTimeout(() => {
+        startRecording();
+      }, 100);
     } catch (error) {
       toast.error("Could not access microphone");
       console.error("Error accessing microphone:", error);

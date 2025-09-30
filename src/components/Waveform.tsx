@@ -43,28 +43,34 @@ const Waveform = ({ audioStream, isActive }: WaveformProps) => {
       canvasCtx.fillStyle = "transparent";
       canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-      canvasCtx.lineWidth = 3;
-      canvasCtx.strokeStyle = "hsl(var(--primary))";
-      canvasCtx.beginPath();
-
-      const sliceWidth = (canvas.width * 1.0) / dataArrayRef.current.length;
-      let x = 0;
-
-      for (let i = 0; i < dataArrayRef.current.length; i++) {
-        const v = dataArrayRef.current[i] / 128.0;
-        const y = (v * canvas.height) / 2;
-
-        if (i === 0) {
-          canvasCtx.moveTo(x, y);
-        } else {
-          canvasCtx.lineTo(x, y);
-        }
-
-        x += sliceWidth;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = Math.min(centerX, centerY) - 20;
+      const bars = 64;
+      
+      for (let i = 0; i < bars; i++) {
+        const dataIndex = Math.floor((i * dataArrayRef.current.length) / bars);
+        const value = dataArrayRef.current[dataIndex] / 255.0;
+        const barHeight = value * radius * 0.6;
+        
+        const angle = (i * 2 * Math.PI) / bars - Math.PI / 2;
+        const x1 = centerX + Math.cos(angle) * radius;
+        const y1 = centerY + Math.sin(angle) * radius;
+        const x2 = centerX + Math.cos(angle) * (radius + barHeight);
+        const y2 = centerY + Math.sin(angle) * (radius + barHeight);
+        
+        const gradient = canvasCtx.createLinearGradient(x1, y1, x2, y2);
+        gradient.addColorStop(0, "hsl(var(--primary))");
+        gradient.addColorStop(1, "hsl(var(--primary) / 0.3)");
+        
+        canvasCtx.strokeStyle = gradient;
+        canvasCtx.lineWidth = 3;
+        canvasCtx.lineCap = "round";
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(x1, y1);
+        canvasCtx.lineTo(x2, y2);
+        canvasCtx.stroke();
       }
-
-      canvasCtx.lineTo(canvas.width, canvas.height / 2);
-      canvasCtx.stroke();
 
       animationRef.current = requestAnimationFrame(draw);
     };
@@ -83,9 +89,9 @@ const Waveform = ({ audioStream, isActive }: WaveformProps) => {
   return (
     <canvas
       ref={canvasRef}
-      width={600}
-      height={200}
-      className="w-full max-w-2xl h-32 md:h-48"
+      width={400}
+      height={400}
+      className="w-64 h-64 md:w-80 md:h-80"
     />
   );
 };
