@@ -29,40 +29,40 @@ const Onboarding = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setAudioStream(stream);
       setHasMicPermission(true);
-      toast.success("Microphone access granted - tap the button to start recording");
+      toast.success("Microphone enabled - recording will start automatically");
+      
+      // Auto-start recording after a brief delay
+      setTimeout(() => {
+        startRecordingWithStream(stream);
+      }, 500);
     } catch (error) {
       toast.error("Could not access microphone");
       console.error("Error accessing microphone:", error);
     }
   };
 
-  const startRecording = async () => {
-    if (!audioStream) return;
-    
+  const startRecordingWithStream = async (stream: MediaStream) => {
     try {
       audioChunksRef.current = [];
       
-      // Try different MIME types
+      // Try to create MediaRecorder without any options first
       let mediaRecorder: MediaRecorder;
       
       try {
-        // Try with no options first (let browser decide)
-        mediaRecorder = new MediaRecorder(audioStream);
+        mediaRecorder = new MediaRecorder(stream);
+        console.log("MediaRecorder created with default settings");
       } catch (e) {
-        // If that fails, try specific codecs
-        const mimeTypes = [
-          'audio/webm',
-          'audio/mp4',
-          'audio/ogg',
-          'audio/wav'
-        ];
+        console.log("Default MediaRecorder failed, trying with specific MIME types");
+        // Try with specific MIME types
+        const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+        let created = false;
         
-        let success = false;
         for (const mimeType of mimeTypes) {
           try {
             if (MediaRecorder.isTypeSupported(mimeType)) {
-              mediaRecorder = new MediaRecorder(audioStream, { mimeType });
-              success = true;
+              mediaRecorder = new MediaRecorder(stream, { mimeType });
+              console.log(`MediaRecorder created with ${mimeType}`);
+              created = true;
               break;
             }
           } catch (err) {
@@ -70,7 +70,7 @@ const Onboarding = () => {
           }
         }
         
-        if (!success) {
+        if (!created) {
           throw new Error('No supported audio format found');
         }
       }
@@ -85,11 +85,16 @@ const Onboarding = () => {
 
       mediaRecorder!.start();
       setIsRecording(true);
-      toast.success("Recording started");
+      console.log("Recording started successfully");
     } catch (error) {
-      toast.error("Could not start recording");
       console.error("Error starting recording:", error);
+      toast.error("Recording could not start automatically - please refresh and try again");
     }
+  };
+
+  const startRecording = async () => {
+    if (!audioStream) return;
+    await startRecordingWithStream(audioStream);
   };
 
   const togglePause = () => {
@@ -118,26 +123,48 @@ const Onboarding = () => {
   const saveRecording = async (audioBlob: Blob, questionId: number) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.error('No authenticated user found');
+        toast.error("Please log in to save recordings");
+        return;
+      }
 
       const fileName = `${user.id}/${questionId}_${Date.now()}.webm`;
-      const { error: uploadError } = await (supabase.storage as any)
+      
+      console.log('Uploading audio file:', fileName);
+      const { error: uploadError } = await supabase.storage
         .from('recordings')
         .upload(fileName, audioBlob);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
-      const { data: { publicUrl } } = (supabase.storage as any)
+      const { data: { publicUrl } } = supabase.storage
         .from('recordings')
         .getPublicUrl(fileName);
 
-      await ((supabase as any).from('recordings')).insert({
-        user_id: user.id,
-        question_id: questionId,
-        audio_url: publicUrl
-      });
+      console.log('Saving recording to database:', { user_id: user.id, question_id: questionId, audio_url: publicUrl });
+      
+      const { error: dbError } = await (supabase as any)
+        .from('recordings')
+        .insert({
+          user_id: user.id,
+          question_id: questionId,
+          audio_url: publicUrl
+        });
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw dbError;
+      }
+      
+      console.log('Recording saved successfully');
+      toast.success("Recording saved");
     } catch (error) {
       console.error('Error saving recording:', error);
+      toast.error("Failed to save recording");
     }
   };
 
