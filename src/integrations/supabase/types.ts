@@ -57,7 +57,7 @@ export type Database = {
           id: string
           question_id: number
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           audio_url?: string | null
@@ -65,7 +65,7 @@ export type Database = {
           id?: string
           question_id: number
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           audio_url?: string | null
@@ -73,7 +73,7 @@ export type Database = {
           id?: string
           question_id?: number
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
