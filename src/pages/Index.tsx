@@ -10,12 +10,6 @@ const Index = () => {
       {/* Hero Section */}
       <div className="container mx-auto px-4 pt-20 pb-16">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-            <Sparkles className="w-4 h-4 text-accent" />
-            <span className="text-sm font-medium">AI Summit Barcelona 2024</span>
-          </div>
-
           {/* Heading */}
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight animate-scale-in">
             Create Your Voice
@@ -27,7 +21,7 @@ const Index = () => {
 
           {/* Subheading */}
           <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto animate-fade-in">
-            Answer a few questions with your voice and we'll build your personalized conference profile
+            Make user profile fun again, with voice
           </p>
 
           {/* CTA Button */}
@@ -37,7 +31,7 @@ const Index = () => {
             className="text-lg px-8 py-6 rounded-full shadow-glow gradient-primary hover:scale-105 transition-transform animate-pulse-glow"
           >
             <Mic className="w-6 h-6 mr-2" />
-            Start Your Profile
+            Let's talk
           </Button>
 
           {/* Features Grid */}
