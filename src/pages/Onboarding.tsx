@@ -204,15 +204,38 @@ const Onboarding = () => {
 
   const saveRecording = async (audioBlob: Blob, questionId: number) => {
     try {
+      // Security: Validate file size (max 10MB)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      if (audioBlob.size > MAX_FILE_SIZE) {
+        toast.error("Recording is too large. Please keep it under 10MB.");
+        return;
+      }
+
+      // Security: Validate file type
+      if (!audioBlob.type.startsWith('audio/')) {
+        toast.error("Invalid file type. Only audio files are allowed.");
+        return;
+      }
+
+      // Security: Validate question ID is within valid range
+      if (questionId < 1 || questionId > questions.length) {
+        console.error('Invalid question ID:', questionId);
+        toast.error("Invalid recording data");
+        return;
+      }
+
       // Generate a random user ID for anonymous recordings
       const randomUserId = crypto.randomUUID();
 
       const fileName = `${randomUserId}/${questionId}_${Date.now()}.webm`;
       
-      console.log('Uploading audio file:', fileName);
+      console.log('Uploading audio file:', fileName, 'Size:', (audioBlob.size / 1024).toFixed(2), 'KB');
       const { error: uploadError } = await supabase.storage
         .from('recordings')
-        .upload(fileName, audioBlob);
+        .upload(fileName, audioBlob, {
+          contentType: audioBlob.type,
+          upsert: false // Prevent overwriting existing files
+        });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
@@ -223,7 +246,7 @@ const Onboarding = () => {
         .from('recordings')
         .getPublicUrl(fileName);
 
-      console.log('Saving recording to database:', { user_id: randomUserId, question_id: questionId, audio_url: publicUrl });
+      console.log('Saving recording to database');
       
       const { error: dbError } = await (supabase as any)
         .from('recordings')
