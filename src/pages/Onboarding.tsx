@@ -136,6 +136,31 @@ const Onboarding = () => {
     setIsPaused(!isPaused);
   };
 
+  const handlePreviousQuestion = async () => {
+    if (currentQuestion === 0) return;
+    
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        await saveRecording(audioBlob, currentQuestion + 1);
+        audioChunksRef.current = [];
+        
+        setCurrentQuestion(currentQuestion - 1);
+        
+        // Restart recording for previous question
+        if (audioStream) {
+          setTimeout(() => {
+            startRecordingWithStream(audioStream).catch(err => {
+              console.error("Failed to restart recording:", err);
+            });
+          }, 300);
+        }
+      };
+    }
+  };
+
   const handleNextQuestion = async () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
@@ -159,6 +184,22 @@ const Onboarding = () => {
           completeOnboarding();
         }
       };
+    }
+  };
+
+  const handleScreenTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isRecording) return;
+    
+    const screenWidth = window.innerWidth;
+    const tapX = e.clientX;
+    
+    // Left half of screen - go back
+    if (tapX < screenWidth / 2) {
+      handlePreviousQuestion();
+    } 
+    // Right half of screen - go forward
+    else {
+      handleNextQuestion();
     }
   };
 
@@ -284,8 +325,8 @@ const Onboarding = () => {
 
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative"
-      onClick={isRecording ? handleNextQuestion : undefined}
+      className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative cursor-pointer"
+      onClick={handleScreenTap}
     >
       {/* Progress indicator */}
       <div className="absolute top-8 left-0 right-0 flex justify-center gap-2 px-4">
@@ -313,9 +354,11 @@ const Onboarding = () => {
         </h2>
         
         {isRecording && (
-          <p className="text-muted-foreground text-sm md:text-base mb-8">
-            Tap anywhere to continue to the next question
-          </p>
+          <div className="text-muted-foreground text-sm md:text-base mb-8 flex items-center gap-4">
+            <span className="opacity-60">← Previous</span>
+            <span>Tap left or right to navigate</span>
+            <span className="opacity-60">Next →</span>
+          </div>
         )}
       </div>
 
