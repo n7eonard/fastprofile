@@ -61,8 +61,7 @@ const Onboarding = () => {
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     
     const checkAudio = () => {
-      if (!analyserRef.current || !isRecording) {
-        animationFrameRef.current = requestAnimationFrame(checkAudio);
+      if (!analyserRef.current) {
         return;
       }
       
@@ -71,8 +70,8 @@ const Onboarding = () => {
       // Calculate average volume
       const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
       
-      // Threshold for voice detection (adjust as needed)
-      const threshold = 20;
+      // Threshold for voice detection (lowered for better sensitivity)
+      const threshold = 15;
       setIsSpeaking(average > threshold);
       
       animationFrameRef.current = requestAnimationFrame(checkAudio);
