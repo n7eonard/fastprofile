@@ -31,14 +31,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Validate session token
-    const { data: session, error: sessionError } = await supabase
-      .from('admin_sessions')
-      .select('user_id, expires_at')
-      .eq('session_token', sessionToken)
-      .single();
+    // Validate session token using secure database function
+    const { data: sessionData, error: sessionError } = await supabase
+      .rpc('validate_admin_session', {
+        _token: sessionToken
+      });
 
-    if (sessionError || !session) {
+    if (sessionError || !sessionData || sessionData.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Invalid or expired session' }),
         { 
@@ -48,16 +47,7 @@ serve(async (req) => {
       );
     }
 
-    // Check if session has expired
-    if (new Date(session.expires_at) <= new Date()) {
-      return new Response(
-        JSON.stringify({ error: 'Session expired' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
+    const session = sessionData[0];
 
     // Fetch recordings
     const { data: recordings, error: recordingsError } = await supabase

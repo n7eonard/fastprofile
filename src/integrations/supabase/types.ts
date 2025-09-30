@@ -183,6 +183,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      create_admin_session: {
+        Args: { _expires_at: string; _user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -193,6 +197,13 @@ export type Database = {
       is_whitelisted: {
         Args: { user_email: string }
         Returns: boolean
+      }
+      validate_admin_session: {
+        Args: { _token: string }
+        Returns: {
+          expires_at: string
+          user_id: string
+        }[]
       }
       validate_session: {
         Args: { _token: string }

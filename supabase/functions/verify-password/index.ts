@@ -49,32 +49,24 @@ serve(async (req) => {
       );
     }
 
-    // Create session token
+    // Create session token using secure database function
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Generate secure random token
-    const tokenBytes = new Uint8Array(32);
-    crypto.getRandomValues(tokenBytes);
-    const sessionToken = Array.from(tokenBytes)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-
     // Create session with 24 hour expiry
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
-    const { error: sessionError } = await supabase
-      .from('admin_sessions')
-      .insert({
-        session_token: sessionToken,
-        user_id: '00000000-0000-0000-0000-000000000000', // System user for password auth
-        expires_at: expiresAt.toISOString(),
+    // Use database function to create hashed session
+    const { data: sessionToken, error: sessionError } = await supabase
+      .rpc('create_admin_session', {
+        _user_id: '00000000-0000-0000-0000-000000000000', // System user for password auth
+        _expires_at: expiresAt.toISOString(),
       });
 
-    if (sessionError) {
+    if (sessionError || !sessionToken) {
       console.error('Error creating session:', sessionError);
       return new Response(
         JSON.stringify({ valid: false, error: 'Failed to create session' }),
