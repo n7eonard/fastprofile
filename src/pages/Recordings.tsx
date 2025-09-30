@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -22,6 +23,7 @@ type Recording = {
 };
 
 const Recordings = () => {
+  const navigate = useNavigate();
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -45,6 +47,11 @@ const Recordings = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   const downloadRecording = async (recording: Recording) => {
@@ -93,7 +100,13 @@ const Recordings = () => {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="container mx-auto max-w-6xl">
-        <h1 className="text-4xl font-bold mb-8">Recordings</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">Recordings</h1>
+          <Button variant="outline" onClick={handleSignOut}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
         
         <Card className="p-6">
           {recordings.length === 0 ? (
