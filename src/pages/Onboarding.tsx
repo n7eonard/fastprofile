@@ -355,10 +355,10 @@ const Onboarding = () => {
       </div>
 
       {/* Animated Microphone Icon */}
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-6">
         <div className="relative">
           {/* Outer animated ring - only visible when speaking */}
-          {isSpeaking && (
+          {isSpeaking && !isPaused && (
             <>
               <div className="absolute inset-0 -m-12 rounded-full border-2 border-primary/30 animate-ping" />
               <div className="absolute inset-0 -m-10 rounded-full border-2 border-primary/40 animate-pulse" />
@@ -368,7 +368,7 @@ const Onboarding = () => {
           
           {/* Microphone circle */}
           <div className={`relative w-48 h-48 rounded-full bg-primary/20 flex items-center justify-center transition-all duration-300 ${
-            isSpeaking ? 'scale-105 bg-primary/30' : 'scale-100'
+            isSpeaking && !isPaused ? 'scale-105 bg-primary/30' : 'scale-100'
           }`}>
             <div className="w-40 h-40 rounded-full bg-primary/40 flex items-center justify-center">
               <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center">
@@ -377,6 +377,31 @@ const Onboarding = () => {
             </div>
           </div>
         </div>
+        
+        {/* Pause/Resume button */}
+        {isRecording && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePause();
+            }}
+            variant="secondary"
+            size="sm"
+            className="rounded-full"
+          >
+            {isPaused ? (
+              <>
+                <Play className="w-4 h-4 mr-2" />
+                Resume
+              </>
+            ) : (
+              <>
+                <Pause className="w-4 h-4 mr-2" />
+                Pause
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
