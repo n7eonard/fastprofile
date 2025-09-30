@@ -135,54 +135,19 @@ const Onboarding = () => {
     setIsPaused(!isPaused);
   };
 
-  const handlePreviousQuestion = async () => {
+  const handlePreviousQuestion = () => {
     if (currentQuestion === 0) return;
-    
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await saveRecording(audioBlob, currentQuestion + 1);
-        audioChunksRef.current = [];
-        
-        setCurrentQuestion(currentQuestion - 1);
-        
-        // Restart recording for previous question
-        if (audioStream) {
-          setTimeout(() => {
-            startRecordingWithStream(audioStream).catch(err => {
-              console.error("Failed to restart recording:", err);
-            });
-          }, 300);
-        }
-      };
-    }
+    // Just move to previous question, keep recording
+    setCurrentQuestion(currentQuestion - 1);
   };
 
-  const handleNextQuestion = async () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await saveRecording(audioBlob, currentQuestion + 1);
-        audioChunksRef.current = [];
-        
-        if (currentQuestion < questions.length - 1) {
-          setCurrentQuestion(currentQuestion + 1);
-          // Restart recording for next question
-          if (audioStream) {
-            setTimeout(() => {
-              startRecordingWithStream(audioStream).catch(err => {
-                console.error("Failed to restart recording:", err);
-              });
-            }, 300);
-          }
-        } else {
-          completeOnboarding();
-        }
-      };
+  const handleNextQuestion = () => {
+    if (currentQuestion < questions.length - 1) {
+      // Just move to next question, keep recording
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      // Final question - stop recording and save
+      completeOnboarding();
     }
   };
 
@@ -202,7 +167,7 @@ const Onboarding = () => {
     }
   };
 
-  const saveRecording = async (audioBlob: Blob, questionId: number) => {
+  const saveRecording = async (audioBlob: Blob) => {
     try {
       // Security: Validate file size (max 10MB)
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -217,17 +182,10 @@ const Onboarding = () => {
         return;
       }
 
-      // Security: Validate question ID is within valid range
-      if (questionId < 1 || questionId > questions.length) {
-        console.error('Invalid question ID:', questionId);
-        toast.error("Invalid recording data");
-        return;
-      }
-
       // Generate a random user ID for anonymous recordings
       const randomUserId = crypto.randomUUID();
 
-      const fileName = `${randomUserId}/${questionId}_${Date.now()}.webm`;
+      const fileName = `${randomUserId}/complete_${Date.now()}.webm`;
       
       console.log('Uploading audio file:', fileName, 'Size:', (audioBlob.size / 1024).toFixed(2), 'KB');
       const { error: uploadError } = await supabase.storage
@@ -248,11 +206,12 @@ const Onboarding = () => {
 
       console.log('Saving recording to database');
       
+      // Save with question_id = 0 to indicate it's a complete recording
       const { error: dbError } = await (supabase as any)
         .from('recordings')
         .insert({
           user_id: randomUserId,
-          question_id: questionId,
+          question_id: 0, // 0 indicates complete recording
           audio_url: publicUrl
         });
 
@@ -272,13 +231,32 @@ const Onboarding = () => {
   const completeOnboarding = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      
+      mediaRecorderRef.current.onstop = async () => {
+        // Combine all audio chunks into a single blob
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // Save the complete recording
+        await saveRecording(audioBlob);
+        
+        // Stop all media tracks
+        if (audioStream) {
+          audioStream.getTracks().forEach(track => track.stop());
+        }
+        
+        setIsComplete(true);
+        
+        setTimeout(() => {
+          navigate("/");
+        }, 4000);
+      };
+    } else {
+      setIsComplete(true);
+      
+      setTimeout(() => {
+        navigate("/");
+      }, 4000);
     }
-    setIsComplete(true);
-    
-    setTimeout(() => {
-      navigate("/");
-    }, 4000);
   };
 
   useEffect(() => {
