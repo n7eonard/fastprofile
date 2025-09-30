@@ -34,7 +34,31 @@ const Onboarding = () => {
       // Start recording immediately with the stream we just obtained
       try {
         audioChunksRef.current = [];
-        const mediaRecorder = new MediaRecorder(stream);
+        
+        // Find a supported MIME type
+        const mimeTypes = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/ogg;codecs=opus',
+          'audio/mp4',
+          'audio/mpeg'
+        ];
+        
+        let selectedMimeType = '';
+        for (const mimeType of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(mimeType)) {
+            selectedMimeType = mimeType;
+            break;
+          }
+        }
+        
+        if (!selectedMimeType) {
+          throw new Error('No supported audio MIME type found');
+        }
+        
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: selectedMimeType
+        });
         mediaRecorderRef.current = mediaRecorder;
 
         mediaRecorder.ondataavailable = (event) => {
@@ -61,7 +85,31 @@ const Onboarding = () => {
     
     try {
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(audioStream);
+      
+      // Find a supported MIME type
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        'audio/mpeg'
+      ];
+      
+      let selectedMimeType = '';
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          break;
+        }
+      }
+      
+      if (!selectedMimeType) {
+        throw new Error('No supported audio MIME type found');
+      }
+      
+      const mediaRecorder = new MediaRecorder(audioStream, {
+        mimeType: selectedMimeType
+      });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
