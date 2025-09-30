@@ -76,6 +76,14 @@ const Recordings = () => {
     try {
       setDownloadingId(recording.id);
       
+      const sessionToken = getSessionToken();
+      
+      if (!sessionToken) {
+        toast.error("Session expired. Please login again.");
+        navigate("/auth");
+        return;
+      }
+
       console.log("Starting download for recording:", recording.id);
       console.log("Audio URL:", recording.audio_url);
       
@@ -96,20 +104,34 @@ const Recordings = () => {
         throw new Error("Could not extract file path from URL");
       }
 
-      // Create a signed URL for download (valid for 60 seconds)
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-        .from('recordings')
-        .createSignedUrl(filePath, 60);
+      // Call edge function to get signed URL
+      const { data, error } = await supabase.functions.invoke('download-recording', {
+        headers: {
+          'x-session-token': sessionToken,
+        },
+        body: {
+          filePath: filePath
+        }
+      });
 
-      if (signedUrlError) {
-        console.error("Signed URL error:", signedUrlError);
-        throw signedUrlError;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
       }
 
-      console.log("Signed URL created, downloading...");
+      if (data.error) {
+        console.error("Download error:", data.error);
+        throw new Error(data.error);
+      }
+
+      if (!data.signedUrl) {
+        throw new Error("No signed URL returned");
+      }
+
+      console.log("Signed URL received, downloading...");
 
       // Fetch the file using the signed URL
-      const response = await fetch(signedUrlData.signedUrl);
+      const response = await fetch(data.signedUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch file: ${response.statusText}`);
       }
