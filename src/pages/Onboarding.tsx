@@ -31,96 +31,61 @@ const Onboarding = () => {
       setHasMicPermission(true);
       toast.success("Microphone access granted");
       
-      // Start recording immediately with the stream we just obtained
-      try {
-        audioChunksRef.current = [];
-        
-        // Find a supported MIME type
-        const mimeTypes = [
-          'audio/webm;codecs=opus',
-          'audio/webm',
-          'audio/ogg;codecs=opus',
-          'audio/mp4',
-          'audio/mpeg'
-        ];
-        
-        let selectedMimeType = '';
-        for (const mimeType of mimeTypes) {
-          if (MediaRecorder.isTypeSupported(mimeType)) {
-            selectedMimeType = mimeType;
-            break;
-          }
+      // Try to auto-start recording, but don't block the UI if it fails
+      setTimeout(async () => {
+        try {
+          await startRecordingWithStream(stream);
+        } catch (error) {
+          console.log("Auto-start failed, user will need to click record button:", error);
+          // Silently fail - user can click the record button manually
         }
-        
-        if (!selectedMimeType) {
-          throw new Error('No supported audio MIME type found');
-        }
-        
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: selectedMimeType
-        });
-        mediaRecorderRef.current = mediaRecorder;
-
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-
-        mediaRecorder.start();
-        setIsRecording(true);
-        toast.success("Recording started");
-      } catch (error) {
-        toast.error("Could not start recording");
-        console.error("Error starting recording:", error);
-      }
+      }, 100);
     } catch (error) {
       toast.error("Could not access microphone");
       console.error("Error accessing microphone:", error);
     }
   };
 
+  const startRecordingWithStream = async (stream: MediaStream) => {
+    audioChunksRef.current = [];
+    
+    // Find a supported MIME type
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+      ''  // Empty string as fallback to let browser choose
+    ];
+    
+    let selectedMimeType = '';
+    for (const mimeType of mimeTypes) {
+      if (mimeType === '' || MediaRecorder.isTypeSupported(mimeType)) {
+        selectedMimeType = mimeType;
+        break;
+      }
+    }
+    
+    const options = selectedMimeType ? { mimeType: selectedMimeType } : undefined;
+    const mediaRecorder = new MediaRecorder(stream, options);
+    mediaRecorderRef.current = mediaRecorder;
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+
+    mediaRecorder.start();
+    setIsRecording(true);
+    toast.success("Recording started");
+  };
+
   const startRecording = async () => {
     if (!audioStream) return;
     
     try {
-      audioChunksRef.current = [];
-      
-      // Find a supported MIME type
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/mp4',
-        'audio/mpeg'
-      ];
-      
-      let selectedMimeType = '';
-      for (const mimeType of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType;
-          break;
-        }
-      }
-      
-      if (!selectedMimeType) {
-        throw new Error('No supported audio MIME type found');
-      }
-      
-      const mediaRecorder = new MediaRecorder(audioStream, {
-        mimeType: selectedMimeType
-      });
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      toast.success("Recording started");
+      await startRecordingWithStream(audioStream);
     } catch (error) {
       toast.error("Could not start recording");
       console.error("Error starting recording:", error);
