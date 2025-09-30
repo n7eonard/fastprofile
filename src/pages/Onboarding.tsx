@@ -204,14 +204,10 @@ const Onboarding = () => {
 
   const saveRecording = async (audioBlob: Blob, questionId: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No authenticated user found');
-        toast.error("Please log in to save recordings");
-        return;
-      }
+      // Generate a random user ID for anonymous recordings
+      const randomUserId = crypto.randomUUID();
 
-      const fileName = `${user.id}/${questionId}_${Date.now()}.webm`;
+      const fileName = `${randomUserId}/${questionId}_${Date.now()}.webm`;
       
       console.log('Uploading audio file:', fileName);
       const { error: uploadError } = await supabase.storage
@@ -227,12 +223,12 @@ const Onboarding = () => {
         .from('recordings')
         .getPublicUrl(fileName);
 
-      console.log('Saving recording to database:', { user_id: user.id, question_id: questionId, audio_url: publicUrl });
+      console.log('Saving recording to database:', { user_id: randomUserId, question_id: questionId, audio_url: publicUrl });
       
       const { error: dbError } = await (supabase as any)
         .from('recordings')
         .insert({
-          user_id: user.id,
+          user_id: randomUserId,
           question_id: questionId,
           audio_url: publicUrl
         });
