@@ -31,10 +31,25 @@ const Onboarding = () => {
       setHasMicPermission(true);
       toast.success("Microphone access granted");
       
-      // Start recording immediately
-      setTimeout(() => {
-        startRecording();
-      }, 100);
+      // Start recording immediately with the stream we just obtained
+      try {
+        audioChunksRef.current = [];
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+        toast.success("Recording started");
+      } catch (error) {
+        toast.error("Could not start recording");
+        console.error("Error starting recording:", error);
+      }
     } catch (error) {
       toast.error("Could not access microphone");
       console.error("Error accessing microphone:", error);
