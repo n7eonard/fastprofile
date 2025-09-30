@@ -43,6 +43,15 @@ const Waveform = ({ audioStream, isActive }: WaveformProps) => {
       canvasCtx.fillStyle = "transparent";
       canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Get the actual primary color value from CSS
+      const primaryColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--primary')
+        .trim();
+      
+      // Convert HSL values (e.g., "230 55% 53%") to proper HSL color strings
+      const primaryColorFull = `hsl(${primaryColor})`;
+      const primaryColorFaded = `hsl(${primaryColor} / 0.3)`;
+
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       const radius = Math.min(centerX, centerY) - 20;
@@ -60,8 +69,8 @@ const Waveform = ({ audioStream, isActive }: WaveformProps) => {
         const y2 = centerY + Math.sin(angle) * (radius + barHeight);
         
         const gradient = canvasCtx.createLinearGradient(x1, y1, x2, y2);
-        gradient.addColorStop(0, "hsl(var(--primary))");
-        gradient.addColorStop(1, "hsl(var(--primary) / 0.3)");
+        gradient.addColorStop(0, primaryColorFull);
+        gradient.addColorStop(1, primaryColorFaded);
         
         canvasCtx.strokeStyle = gradient;
         canvasCtx.lineWidth = 3;
