@@ -355,24 +355,24 @@ const Onboarding = () => {
       </div>
 
       {/* Animated Microphone Icon */}
-      <div className="absolute bottom-12 flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4">
         <div className="relative">
           {/* Outer animated ring - only visible when speaking */}
           {isSpeaking && (
             <>
-              <div className="absolute inset-0 -m-8 rounded-full border-2 border-primary/30 animate-ping" />
-              <div className="absolute inset-0 -m-6 rounded-full border-2 border-primary/40 animate-pulse" />
-              <div className="absolute inset-0 -m-4 rounded-full border-2 border-primary/50 animate-pulse" style={{ animationDelay: '0.2s' }} />
+              <div className="absolute inset-0 -m-12 rounded-full border-2 border-primary/30 animate-ping" />
+              <div className="absolute inset-0 -m-10 rounded-full border-2 border-primary/40 animate-pulse" />
+              <div className="absolute inset-0 -m-8 rounded-full border-2 border-primary/50 animate-pulse" style={{ animationDelay: '0.2s' }} />
             </>
           )}
           
           {/* Microphone circle */}
-          <div className={`relative w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center transition-all duration-300 ${
+          <div className={`relative w-48 h-48 rounded-full bg-primary/20 flex items-center justify-center transition-all duration-300 ${
             isSpeaking ? 'scale-105 bg-primary/30' : 'scale-100'
           }`}>
-            <div className="w-24 h-24 rounded-full bg-primary/40 flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
-                <Mic className="w-10 h-10 text-primary-foreground" />
+            <div className="w-40 h-40 rounded-full bg-primary/40 flex items-center justify-center">
+              <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center">
+                <Mic className="w-16 h-16 text-primary-foreground" />
               </div>
             </div>
           </div>
