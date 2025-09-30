@@ -58,23 +58,52 @@ const Recordings = () => {
     try {
       setDownloadingId(recording.id);
       
+      console.log("Starting download for recording:", recording.id);
+      console.log("Audio URL:", recording.audio_url);
+      
       // Extract the file path from the audio_url
       const url = new URL(recording.audio_url);
       const pathParts = url.pathname.split('/');
-      const filePath = pathParts.slice(pathParts.indexOf('recordings') + 1).join('/');
+      
+      // Find the index of 'recordings' or 'object' in the path
+      let startIndex = pathParts.indexOf('recordings');
+      if (startIndex === -1) {
+        startIndex = pathParts.indexOf('object');
+      }
+      
+      const filePath = pathParts.slice(startIndex + 2).join('/');
+      console.log("Extracted file path:", filePath);
 
-      // Download the file from storage
-      const { data, error } = await supabase.storage
+      if (!filePath) {
+        throw new Error("Could not extract file path from URL");
+      }
+
+      // Create a signed URL for download (valid for 60 seconds)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('recordings')
-        .download(filePath);
+        .createSignedUrl(filePath, 60);
 
-      if (error) throw error;
+      if (signedUrlError) {
+        console.error("Signed URL error:", signedUrlError);
+        throw signedUrlError;
+      }
+
+      console.log("Signed URL created, downloading...");
+
+      // Fetch the file using the signed URL
+      const response = await fetch(signedUrlData.signedUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      console.log("File downloaded, size:", blob.size, "bytes");
 
       // Create a download link
-      const downloadUrl = window.URL.createObjectURL(data);
+      const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = `recording_${recording.id}_${new Date(recording.created_at).toLocaleDateString()}.webm`;
+      link.download = `recording_${recording.question_id === 0 ? 'complete' : recording.question_id}_${new Date(recording.created_at).toLocaleDateString().replace(/\//g, '-')}.webm`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -83,7 +112,7 @@ const Recordings = () => {
       toast.success("Recording downloaded");
     } catch (error) {
       console.error("Error downloading recording:", error);
-      toast.error("Failed to download recording");
+      toast.error(`Failed to download recording: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setDownloadingId(null);
     }
