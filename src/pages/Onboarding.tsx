@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Mic, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import Waveform from "@/components/Waveform";
 
 const questions = [
   { id: 1, text: "What's your name?", subtitle: "Let's start with the basics" },
@@ -21,8 +20,11 @@ const Onboarding = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [hasMicPermission, setHasMicPermission] = useState(false);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number>();
 
   const requestMicPermission = async () => {
     try {
@@ -30,17 +32,53 @@ const Onboarding = () => {
       setAudioStream(stream);
       setHasMicPermission(true);
       
+      // Set up audio analysis for voice detection
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      
+      // Start voice detection loop
+      detectVoiceActivity();
+      
       // Auto-start recording after UI renders
       setTimeout(() => {
         startRecordingWithStream(stream).catch(err => {
           console.error("Auto-start recording failed:", err);
-          // Silently fail - UI is already rendered
         });
       }, 300);
     } catch (error) {
       toast.error("Could not access microphone");
       console.error("Error accessing microphone:", error);
     }
+  };
+
+  const detectVoiceActivity = () => {
+    if (!analyserRef.current) return;
+    
+    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+    
+    const checkAudio = () => {
+      if (!analyserRef.current || !isRecording) {
+        animationFrameRef.current = requestAnimationFrame(checkAudio);
+        return;
+      }
+      
+      analyserRef.current.getByteFrequencyData(dataArray);
+      
+      // Calculate average volume
+      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+      
+      // Threshold for voice detection (adjust as needed)
+      const threshold = 20;
+      setIsSpeaking(average > threshold);
+      
+      animationFrameRef.current = requestAnimationFrame(checkAudio);
+    };
+    
+    checkAudio();
   };
 
   const startRecordingWithStream = async (stream: MediaStream) => {
@@ -189,6 +227,9 @@ const Onboarding = () => {
       if (audioStream) {
         audioStream.getTracks().forEach(track => track.stop());
       }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [audioStream]);
 
@@ -272,62 +313,35 @@ const Onboarding = () => {
         </h2>
         
         {isRecording && (
-          <>
-            <p className="text-muted-foreground text-sm md:text-base mb-8">
-              Tap anywhere to continue to the next question
-            </p>
-            <div className="mb-8">
-              <Waveform audioStream={audioStream} isActive={isRecording && !isPaused} />
-            </div>
-          </>
+          <p className="text-muted-foreground text-sm md:text-base mb-8">
+            Tap anywhere to continue to the next question
+          </p>
         )}
       </div>
 
-      {/* Recording controls */}
+      {/* Animated Microphone Icon */}
       <div className="absolute bottom-12 flex flex-col items-center gap-4">
-        {!isRecording ? (
-          <Button
-            onClick={startRecording}
-            size="lg"
-            className="rounded-full w-20 h-20 shadow-glow gradient-primary hover:scale-105 transition-transform"
-          >
-            <Mic className="w-8 h-8" />
-          </Button>
-        ) : (
-          <div className="flex flex-col items-center gap-4">
-            {/* Recording indicator */}
-            <div className={`w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center ${!isPaused ? 'animate-pulse-glow' : ''}`}>
-              <div className="w-16 h-16 rounded-full bg-primary/40 flex items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
-                  <Mic className="w-6 h-6 text-primary-foreground" />
-                </div>
+        <div className="relative">
+          {/* Outer animated ring - only visible when speaking */}
+          {isSpeaking && (
+            <>
+              <div className="absolute inset-0 -m-8 rounded-full border-2 border-primary/30 animate-ping" />
+              <div className="absolute inset-0 -m-6 rounded-full border-2 border-primary/40 animate-pulse" />
+              <div className="absolute inset-0 -m-4 rounded-full border-2 border-primary/50 animate-pulse" style={{ animationDelay: '0.2s' }} />
+            </>
+          )}
+          
+          {/* Microphone circle */}
+          <div className={`relative w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center transition-all duration-300 ${
+            isSpeaking ? 'scale-105 bg-primary/30' : 'scale-100'
+          }`}>
+            <div className="w-24 h-24 rounded-full bg-primary/40 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
+                <Mic className="w-10 h-10 text-primary-foreground" />
               </div>
             </div>
-            
-            {/* Pause/Resume button */}
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                togglePause();
-              }}
-              variant="secondary"
-              size="sm"
-              className="rounded-full"
-            >
-              {isPaused ? (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Resume
-                </>
-              ) : (
-                <>
-                  <Pause className="w-4 h-4 mr-2" />
-                  Pause
-                </>
-              )}
-            </Button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
