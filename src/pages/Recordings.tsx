@@ -88,17 +88,21 @@ const Recordings = () => {
       console.log("Audio URL:", recording.audio_url);
       
       // Extract the file path from the audio_url
+      // Supabase storage URLs have format: .../storage/v1/object/public/recordings/<path>
+      // We need to extract everything after the bucket name
       const url = new URL(recording.audio_url);
-      const pathParts = url.pathname.split('/');
+      const pathParts = url.pathname.split('/').filter(part => part); // Remove empty strings
       
-      // Find the index of 'recordings' or 'object' in the path
-      let startIndex = pathParts.indexOf('recordings');
-      if (startIndex === -1) {
-        startIndex = pathParts.indexOf('object');
+      // Find 'recordings' bucket name and get everything after it
+      const recordingsIndex = pathParts.indexOf('recordings');
+      if (recordingsIndex === -1) {
+        throw new Error("Could not find 'recordings' bucket in URL");
       }
       
-      const filePath = pathParts.slice(startIndex + 2).join('/');
+      // Get the path within the bucket (everything after 'recordings/')
+      const filePath = pathParts.slice(recordingsIndex + 1).join('/');
       console.log("Extracted file path:", filePath);
+      console.log("Full URL:", recording.audio_url);
 
       if (!filePath) {
         throw new Error("Could not extract file path from URL");
