@@ -29,12 +29,14 @@ const Onboarding = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setAudioStream(stream);
       setHasMicPermission(true);
-      toast.success("Microphone enabled - recording will start automatically");
       
-      // Auto-start recording after a brief delay
+      // Auto-start recording after UI renders
       setTimeout(() => {
-        startRecordingWithStream(stream);
-      }, 500);
+        startRecordingWithStream(stream).catch(err => {
+          console.error("Auto-start recording failed:", err);
+          // Silently fail - UI is already rendered
+        });
+      }, 300);
     } catch (error) {
       toast.error("Could not access microphone");
       console.error("Error accessing microphone:", error);
@@ -42,54 +44,49 @@ const Onboarding = () => {
   };
 
   const startRecordingWithStream = async (stream: MediaStream) => {
+    audioChunksRef.current = [];
+    
+    // Try to create MediaRecorder without any options first
+    let mediaRecorder: MediaRecorder;
+    
     try {
-      audioChunksRef.current = [];
+      mediaRecorder = new MediaRecorder(stream);
+      console.log("MediaRecorder created with default settings");
+    } catch (e) {
+      console.log("Default MediaRecorder failed, trying with specific MIME types");
+      // Try with specific MIME types
+      const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+      let created = false;
       
-      // Try to create MediaRecorder without any options first
-      let mediaRecorder: MediaRecorder;
-      
-      try {
-        mediaRecorder = new MediaRecorder(stream);
-        console.log("MediaRecorder created with default settings");
-      } catch (e) {
-        console.log("Default MediaRecorder failed, trying with specific MIME types");
-        // Try with specific MIME types
-        const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/ogg'];
-        let created = false;
-        
-        for (const mimeType of mimeTypes) {
-          try {
-            if (MediaRecorder.isTypeSupported(mimeType)) {
-              mediaRecorder = new MediaRecorder(stream, { mimeType });
-              console.log(`MediaRecorder created with ${mimeType}`);
-              created = true;
-              break;
-            }
-          } catch (err) {
-            continue;
+      for (const mimeType of mimeTypes) {
+        try {
+          if (MediaRecorder.isTypeSupported(mimeType)) {
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
+            console.log(`MediaRecorder created with ${mimeType}`);
+            created = true;
+            break;
           }
-        }
-        
-        if (!created) {
-          throw new Error('No supported audio format found');
+        } catch (err) {
+          continue;
         }
       }
       
-      mediaRecorderRef.current = mediaRecorder!;
-
-      mediaRecorder!.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder!.start();
-      setIsRecording(true);
-      console.log("Recording started successfully");
-    } catch (error) {
-      console.error("Error starting recording:", error);
-      toast.error("Recording could not start automatically - please refresh and try again");
+      if (!created) {
+        throw new Error('No supported audio format found');
+      }
     }
+    
+    mediaRecorderRef.current = mediaRecorder!;
+
+    mediaRecorder!.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+
+    mediaRecorder!.start();
+    setIsRecording(true);
+    console.log("Recording started successfully");
   };
 
   const startRecording = async () => {
@@ -112,7 +109,14 @@ const Onboarding = () => {
         
         if (currentQuestion < questions.length - 1) {
           setCurrentQuestion(currentQuestion + 1);
-          setIsRecording(false);
+          // Restart recording for next question
+          if (audioStream) {
+            setTimeout(() => {
+              startRecordingWithStream(audioStream).catch(err => {
+                console.error("Failed to restart recording:", err);
+              });
+            }, 300);
+          }
         } else {
           completeOnboarding();
         }
