@@ -175,6 +175,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admins_exist: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       clean_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
