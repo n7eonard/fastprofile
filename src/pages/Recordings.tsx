@@ -49,8 +49,8 @@ const Recordings = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
+  const handleSignOut = () => {
+    sessionStorage.removeItem('recordings_authenticated');
     navigate("/auth");
   };
 

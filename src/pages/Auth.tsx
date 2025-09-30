@@ -1,45 +1,57 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { LogIn } from "lucide-react";
+import { Lock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/recordings");
-      }
-    });
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/recordings");
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // Check if user is already authenticated
+    const authenticated = sessionStorage.getItem('recordings_authenticated');
+    if (authenticated === 'true') {
+      navigate("/recordings");
+    }
   }, [navigate]);
 
-  const signInWithGoogle = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!password.trim()) {
+      toast.error("Please enter a password");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/recordings`,
-        },
+      const { data, error } = await supabase.functions.invoke('verify-password', {
+        body: { password },
       });
 
       if (error) throw error;
+
+      if (data.valid) {
+        // Store authentication in session storage
+        sessionStorage.setItem('recordings_authenticated', 'true');
+        toast.success("Access granted");
+        navigate("/recordings");
+      } else {
+        toast.error("Invalid password");
+        setPassword("");
+      }
     } catch (error) {
-      console.error("Error signing in with Google:", error);
-      toast.error("Failed to sign in with Google");
+      console.error("Error verifying password:", error);
+      toast.error("Failed to verify password");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,24 +59,38 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome</h1>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+            <Lock className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-3xl font-bold mb-2">Protected Area</h1>
           <p className="text-muted-foreground">
-            Sign in with your Google account to access recordings
+            Enter the password to access recordings
           </p>
         </div>
 
-        <Button
-          onClick={signInWithGoogle}
-          className="w-full"
-          size="lg"
-        >
-          <LogIn className="w-5 h-5 mr-2" />
-          Sign in with Google
-        </Button>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              disabled={loading}
+              autoComplete="off"
+            />
+          </div>
 
-        <p className="text-sm text-muted-foreground text-center mt-6">
-          Only whitelisted users can access this area
-        </p>
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={loading}
+          >
+            {loading ? "Verifying..." : "Access Recordings"}
+          </Button>
+        </form>
       </Card>
     </div>
   );
