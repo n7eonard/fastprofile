@@ -352,14 +352,6 @@ const Onboarding = () => {
         <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-12 leading-tight">
           {questions[currentQuestion].text}
         </h2>
-        
-        {isRecording && (
-          <div className="text-muted-foreground text-sm md:text-base mb-8 flex items-center gap-4">
-            <span className="opacity-60">← Previous</span>
-            <span>Tap left or right to navigate</span>
-            <span className="opacity-60">Next →</span>
-          </div>
-        )}
       </div>
 
       {/* Animated Microphone Icon */}
